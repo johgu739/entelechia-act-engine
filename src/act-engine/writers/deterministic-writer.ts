@@ -18,7 +18,7 @@ import { generateBanner, type BannerOptions } from './banners.js'
 
 export interface WriteFileOptions {
   banner: BannerOptions
-  type: 'schema' | 'migration' | 'service' | 'route' | 'test' | 'form' | 'form-types' | 'invariant-mapping'
+  type: 'schema' | 'migration' | 'service' | 'route' | 'test' | 'form' | 'form-types' | 'invariant-mapping' | 'commands' | 'hotkeys'
   contract?: string
   domain?: string
   checkMode?: boolean // CI mode: don't write, just check

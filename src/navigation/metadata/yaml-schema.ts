@@ -329,6 +329,8 @@ const WorkspaceSidebarSchema = z.object({
   styling: WorkspaceSidebarStylingSchema,
   header: WorkspaceSidebarHeaderSchema,
   behavior: WorkspaceSidebarBehaviorSchema,
+  // ✅ NEW: Sidebar-level invariants (multilayer enforcement)
+  invariants: NavigationInvariantBindingSchema.optional(),
 })
 
 export const WorkspaceSidebarYamlSchema = z.object({

@@ -9,6 +9,7 @@
 
 import type { ContractDefinition, FieldDefinition, ProjectionCapabilities } from '@entelechia/shared/contracts/metadata/types'
 import type { FormYaml } from './yaml-schema.js'
+import type { FunctionalBinding } from './functional-types.js'
 import { validateFormInvariants } from './invariant-validator.js'
 
 /**
@@ -36,6 +37,15 @@ export interface InvariantEnforcementMetadata {
   layer: 'FORM' | 'ACT' | 'STATE' | 'RUNTIME' | 'BOTH'
 }
 
+/**
+ * Canonical spacing values (from design system)
+ * These are literal types to prevent non-canonical values
+ */
+type CanonicalSpacing = 0 | 4 | 8 | 12 | 16 | 20 | 24 | 32 | 40 | 48 | 64
+type CanonicalPaddingX = 24 // ✅ F004: Canonical horizontal padding (SPACING.XXLARGE)
+type CanonicalPaddingY = 16 // ✅ F004: Canonical vertical padding (SPACING.LARGE)
+type CanonicalGrid = 4 // ✅ F86: Spacing grid unity (4px base unit)
+
 export interface CanonicalFormDescriptor {
   contract: string
   variant: string
@@ -45,12 +55,18 @@ export interface CanonicalFormDescriptor {
     declared: string[] // Invariant IDs declared in YAML
     enforced: InvariantEnforcementMetadata[] // Invariants enforced on this descriptor
   }
-  // ✅ NEW: Invariant-encoded constraints
+  // ✅ NEW: Invariant-encoded constraints (literal types prevent non-canonical values)
   scrollContainers: readonly [ScrollContainer] // ✅ F82: Tuple of length 1 (not array)
   padding: {
-    x: 24 // ✅ F004: Literal type (canonical padding)
-    y: 16 // ✅ F004: Literal type (canonical padding)
+    x: CanonicalPaddingX // ✅ F004: Literal type (canonical padding - 24px)
+    y: CanonicalPaddingY // ✅ F004: Literal type (canonical padding - 16px)
   }
+  // ✅ NEW: Canonical spacing (literal type from design system)
+  canonicalSpacing: CanonicalSpacing
+  // ✅ NEW: Canonical grid (literal type)
+  canonicalGrid: CanonicalGrid
+  // ✅ PHASE 3: Functional bindings (optional - only if functional YAML exists)
+  functional?: import('./functional-types.js').FunctionalBinding
 }
 
 /**
@@ -195,6 +211,20 @@ export function canonicalizeForm(
     type: 'form' as const,
   }
 
+  // ✅ Ensure canonical values (enforce literal types)
+  const canonicalPaddingX: CanonicalPaddingX = (padding.x ?? 24) as CanonicalPaddingX
+  const canonicalPaddingY: CanonicalPaddingY = (padding.y ?? 16) as CanonicalPaddingY
+  const canonicalSpacing: CanonicalSpacing = 24 as CanonicalSpacing // Default section spacing
+  const canonicalGrid: CanonicalGrid = 4 as CanonicalGrid // ✅ F86: 4px grid
+  
+  // Validate padding values are canonical
+  if (canonicalPaddingX !== 24) {
+    throw new Error(`Non-canonical horizontal padding: ${canonicalPaddingX}px (expected 24px)`)
+  }
+  if (canonicalPaddingY !== 16) {
+    throw new Error(`Non-canonical vertical padding: ${canonicalPaddingY}px (expected 16px)`)
+  }
+  
   const descriptor: CanonicalFormDescriptor = {
     contract: yaml.form.contract,
     variant: yaml.form.variant,
@@ -208,12 +238,17 @@ export function canonicalizeForm(
         layer: enforceAt === 'build' ? 'ACT' : enforceAt === 'runtime' ? 'RUNTIME' : 'BOTH',
       })),
     },
-    // ✅ NEW: Invariant-encoded constraints
+    // ✅ NEW: Invariant-encoded constraints (literal types)
     padding: {
-      x: padding.x ?? 24,
-      y: padding.y ?? 16,
+      x: canonicalPaddingX, // ✅ F004: Literal 24
+      y: canonicalPaddingY, // ✅ F004: Literal 16
     },
     scrollContainers: [scrollContainer], // ✅ F82: Tuple of length 1
+    // ✅ NEW: Canonical spacing and grid (literal types)
+    canonicalSpacing,
+    canonicalGrid,
+    // ✅ PHASE 3: Functional bindings (if present in YAML)
+    functional: yaml.form.functional ? yaml.form.functional as FunctionalBinding : undefined,
   }
 
   // Validate invariants before returning

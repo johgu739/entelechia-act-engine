@@ -12,29 +12,78 @@ import { registry } from '@entelechia/invariant-engine'
 
 /**
  * Functional Binding Schemas (for YAML)
+ * 
+ * ✅ PHASE 1: Complete Functional FORM Spec
+ * 
+ * These schemas enable full functional binding:
+ * - dataSource: Binds to projections, stateviews, contracts
+ * - mutation: Binds to intents or contract endpoints
+ * - capability: ACL requirements
+ * - listen: Reactive data subscriptions
+ * - conditions: Conditional visibility/enabling
+ * - invariants: Invariant declarations
+ * - intent: Telos/purpose declaration
  */
 
+/**
+ * DataSource Binding Schema
+ * 
+ * Binds form fields/sections to data sources:
+ * - projection: From projectionCapabilities
+ * - stateview: From stateView contracts (NodeStateView, SystemStateView)
+ * - contract: Direct contract endpoint
+ * - computed: Derived/computed value
+ */
 const DataSourceBindingSchema = z.object({
   type: z.enum(['projection', 'contract', 'stateview', 'computed']),
-  source: z.string(),
-  path: z.string().optional(),
-  params: z.record(z.any()).optional(),
+  source: z.string().min(1, 'DataSource source is required'),
+  path: z.string().optional(), // JSONPath to nested value (e.g., "node.label", "system.nodes[0]")
+  params: z.record(z.any()).optional(), // Query params for contract endpoints
+  // ✅ NEW: Field-level dataSource (for individual fields)
+  fieldBinding: z.record(z.string()).optional(), // Maps field names to dataSource paths
 })
 
-const MutationBindingSchema = z.object({
-  type: z.literal('intent'),
-  intentId: z.string().min(1, 'intentId is required'),
-  payloadTemplate: z.record(z.any()).optional(),
-  onSuccess: z.object({
-    redirect: z.string().optional(),
-    refresh: z.array(z.string()).optional(),
-    event: z.string().optional(),
-  }).optional(),
-  onError: z.object({
-    showError: z.boolean().optional(),
-    redirect: z.string().optional(),
-  }).optional(),
-})
+/**
+ * Mutation Binding Schema
+ * 
+ * Supports two mutation types:
+ * 1. intent: Uses intent registry (auth.login, node.create, etc.)
+ * 2. contractEndpoint: Direct contract endpoint call
+ */
+const MutationBindingSchema = z.union([
+  // Intent-based mutation (existing)
+  z.object({
+    type: z.literal('intent'),
+    intentId: z.string().min(1, 'intentId is required'),
+    payloadTemplate: z.record(z.any()).optional(), // Template with $form.field, $context.* variables
+    onSuccess: z.object({
+      redirect: z.string().optional(),
+      refresh: z.array(z.string()).optional(), // Query keys to invalidate
+      event: z.string().optional(), // Event to emit
+    }).optional(),
+    onError: z.object({
+      showError: z.boolean().optional(),
+      redirect: z.string().optional(),
+    }).optional(),
+  }),
+  // Contract endpoint mutation (NEW)
+  z.object({
+    type: z.literal('contractEndpoint'),
+    contract: z.string().min(1, 'Contract name is required'),
+    endpoint: z.string().min(1, 'Endpoint name is required'),
+    method: z.enum(['POST', 'PUT', 'PATCH', 'DELETE']),
+    payloadTemplate: z.record(z.any()).optional(), // Template with $form.field, $context.* variables
+    onSuccess: z.object({
+      redirect: z.string().optional(),
+      refresh: z.array(z.string()).optional(),
+      event: z.string().optional(),
+    }).optional(),
+    onError: z.object({
+      showError: z.boolean().optional(),
+      redirect: z.string().optional(),
+    }).optional(),
+  }),
+])
 
 const CapabilityBindingSchema = z.object({
   requiredAction: z.string(),
@@ -45,18 +94,39 @@ const CapabilityBindingSchema = z.object({
   }).optional(),
 })
 
+/**
+ * Listen Binding Schema
+ * 
+ * Reactive subscriptions for form updates:
+ * - event: DOM/custom events
+ * - projection: Projection updates (from projectionCapabilities)
+ * - invariant: Invariant violation events
+ * - poll: Polling-based updates
+ */
 const ListenBindingSchema = z.object({
   type: z.enum(['event', 'projection', 'invariant', 'poll']),
-  source: z.string(),
-  name: z.string().optional(),
-  interval: z.number().optional(),
+  source: z.string().min(1, 'Listen source is required'),
+  name: z.string().optional(), // Event name or projection name
+  interval: z.number().optional(), // For poll type (milliseconds)
+  handler: z.string().optional(), // Handler function name (generated)
 })
 
+/**
+ * Condition Binding Schema
+ * 
+ * Conditional visibility/enabling based on:
+ * - Form field values: "$form.field == 'value'"
+ * - Context values: "$context.nodeId != null"
+ * - User state: "$user.role == 'admin'"
+ * - Capabilities: "$capability.VIEW_NODE == true"
+ */
 const ConditionBindingSchema = z.object({
-  when: z.string(),
-  show: z.boolean().optional(),
-  enable: z.boolean().optional(),
-  value: z.any().optional(),
+  when: z.string().min(1, 'Condition expression is required'), // Expression string
+  show: z.boolean().optional(), // Show/hide element
+  enable: z.boolean().optional(), // Enable/disable element
+  value: z.any().optional(), // Set value when condition is true
+  // ✅ NEW: Multiple conditions (AND/OR logic)
+  operator: z.enum(['AND', 'OR']).optional().default('AND'),
 })
 
 /**
@@ -87,15 +157,62 @@ const IntentBindingSchema = z.object({
   category: z.string().optional(),
 })
 
+/**
+ * Functional Binding Schema
+ * 
+ * Complete functional binding specification for FORM elements.
+ * 
+ * Can be applied at:
+ * - Form level (applies to entire form)
+ * - Section level (applies to section)
+ * - Field level (applies to individual field)
+ * 
+ * ✅ PHASE 1: All functional bindings now supported
+ */
 const FunctionalBindingSchema = z.object({
+  // ✅ Data source binding (for read operations)
   dataSource: DataSourceBindingSchema.optional(),
+  
+  // ✅ Mutation binding (for write operations)
   mutation: MutationBindingSchema.optional(),
+  
+  // ✅ Capability binding (ACL requirements)
   capability: CapabilityBindingSchema.optional(),
-  listen: z.array(ListenBindingSchema).optional(),
-  conditions: z.array(ConditionBindingSchema).optional(),
+  
+  // ✅ Listen bindings (reactive subscriptions)
+  listen: z.union([
+    z.array(ListenBindingSchema), // Multiple listeners
+    ListenBindingSchema, // Single listener (convenience)
+  ]).optional(),
+  
+  // ✅ Condition bindings (conditional visibility/enabling)
+  conditions: z.union([
+    z.array(ConditionBindingSchema), // Multiple conditions
+    ConditionBindingSchema, // Single condition (convenience)
+  ]).optional(),
+  
+  // ✅ Invariant bindings (invariant declarations)
   invariants: InvariantBindingSchema.optional(),
+  
+  // ✅ Intent binding (telos/purpose declaration)
   intent: IntentBindingSchema.optional(),
-})
+}).refine(
+  // ✅ Validation: Must have at least one functional binding
+  (data) => {
+    return !!(
+      data.dataSource ||
+      data.mutation ||
+      data.capability ||
+      data.listen ||
+      data.conditions ||
+      data.invariants ||
+      data.intent
+    )
+  },
+  {
+    message: 'Functional binding must have at least one of: dataSource, mutation, capability, listen, conditions, invariants, intent',
+  }
+)
 
 /**
  * Form YAML Schema

@@ -22,25 +22,44 @@ export interface DataSourceBinding {
 /**
  * Mutation binding
  * 
- * Declares what intent is triggered.
+ * Declares what mutation is triggered.
  * 
  * PRINCIPLE: FORM → ACT → STATE
- * - All mutations go through intent registry (auth.login, node.create, etc.)
+ * Supports two mutation types:
+ * 1. intent: Uses intent registry (auth.login, node.create, etc.)
+ * 2. contractEndpoint: Direct contract endpoint call
  */
-export interface MutationBinding {
-  type: 'intent'
-  intentId: string // e.g., "auth.login", "node.create" - must exist in intent registry
-  payloadTemplate?: Record<string, any> // JSON template with $fieldValue, $form.fieldName placeholders
-  onSuccess?: {
-    redirect?: string // route to navigate to
-    refresh?: string[] // data sources to refresh
-    event?: string // event to emit
-  }
-  onError?: {
-    showError?: boolean
-    redirect?: string
-  }
-}
+export type MutationBinding =
+  | {
+      type: 'intent'
+      intentId: string // e.g., "auth.login", "node.create" - must exist in intent registry
+      payloadTemplate?: Record<string, any> // JSON template with $fieldValue, $form.fieldName placeholders
+      onSuccess?: {
+        redirect?: string // route to navigate to
+        refresh?: string[] // data sources to refresh
+        event?: string // event to emit
+      }
+      onError?: {
+        showError?: boolean
+        redirect?: string
+      }
+    }
+  | {
+      type: 'contractEndpoint'
+      contract: string // Contract name (must exist in contract metadata)
+      endpoint: string // Endpoint name (must exist in contract metadata)
+      method: 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+      payloadTemplate?: Record<string, any> // JSON template with $fieldValue, $form.fieldName placeholders
+      onSuccess?: {
+        redirect?: string
+        refresh?: string[]
+        event?: string
+      }
+      onError?: {
+        showError?: boolean
+        redirect?: string
+      }
+    }
 
 /**
  * Capability binding
@@ -105,13 +124,15 @@ export interface IntentBinding {
  * Complete functional binding
  * 
  * All functional aspects of a UI element.
+ * 
+ * Note: listen and conditions can be single items or arrays (convenience).
  */
 export interface FunctionalBinding {
   dataSource?: DataSourceBinding
   mutation?: MutationBinding
   capability?: CapabilityBinding
-  listen?: ListenBinding[]
-  conditions?: ConditionBinding[]
+  listen?: ListenBinding | ListenBinding[] // Single or array (convenience)
+  conditions?: ConditionBinding | ConditionBinding[] // Single or array (convenience)
   invariants?: InvariantBinding
   intent?: IntentBinding
 }

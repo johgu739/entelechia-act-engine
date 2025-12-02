@@ -20,6 +20,8 @@ import { runPhase6Canonicalization } from './phases/phase-6-canonicalization.js'
 import { runPhase6bNavigationCanonicalization } from './phases/phase-6b-navigation-canonicalization.js'
 import { runPhase7_5FunctionalCanonicalization } from './phases/phase-7.5-functional-canonicalization.js'
 import { runPhase7_6InvariantEnforcement } from './phases/phase-7.6-invariant-enforcement.js'
+import { runPhase7_7FunctionalCanonicalization } from './phases/phase-7.7-functional-canonicalization.js'
+import { runPhase7_8CommandCanonicalization } from './phases/phase-7.8-command-canonicalization.js'
 import { runPhase7Codegen } from './phases/phase-7-codegen.js'
 import { runPhase8DriftCheck } from './phases/phase-8-drift-check.js'
 import { runPhase9UiTypecheck } from './phases/phase-9-ui-typecheck.js'
@@ -297,9 +299,87 @@ export async function runActPipeline(
     }
   }
   
+  // Phase 7.7: Functional Canonicalization (NEW)
+  // Validates functional bindings against contract metadata, ActionRegistry, intent registry
+  if (!fullConfig.skipPhases?.includes(7.7)) {
+    const phase7_7 = await runPhase7_7FunctionalCanonicalization(
+      manifest,
+      fullConfig,
+      contracts
+    )
+    phases.push(phase7_7)
+    allErrors.push(...phase7_7.errors)
+    allWarnings.push(...phase7_7.warnings)
+    
+    // Merge functional descriptors from Phase 7.7 with Phase 7.5
+    if ((phase7_7 as any).functionalDescriptors) {
+      const phase7_7Descriptors = (phase7_7 as any).functionalDescriptors as Map<string, any>
+      if (functionalDescriptors) {
+        // Merge: Phase 7.7 takes precedence
+        for (const [key, value] of phase7_7Descriptors) {
+          functionalDescriptors.set(key, value)
+        }
+      } else {
+        functionalDescriptors = phase7_7Descriptors
+      }
+    }
+    
+    // ✅ CRITICAL: Fail pipeline on FIRST functional binding validation error
+    if (!phase7_7.success) {
+      return {
+        success: false,
+        phases,
+        manifest,
+        totalDuration: Date.now() - startTime,
+        errors: allErrors,
+        warnings: allWarnings,
+      }
+    }
+  }
+  
+  // Phase 7.8: Command Canonicalization (NEW)
+  // Validates commands.yaml against ActionRegistry and IntentRegistry
+  let commandDescriptors: Map<string, any> | undefined
+  let hotkeyDescriptors: Map<string, any> | undefined
+  
+  if (!fullConfig.skipPhases?.includes(7.8)) {
+    const phase7_8 = await runPhase7_8CommandCanonicalization(manifest, fullConfig)
+    phases.push(phase7_8)
+    allErrors.push(...phase7_8.errors)
+    allWarnings.push(...phase7_8.warnings)
+    
+    // Extract command and hotkey descriptors
+    if ((phase7_8 as any).commandDescriptors) {
+      commandDescriptors = (phase7_8 as any).commandDescriptors as Map<string, any>
+    }
+    if ((phase7_8 as any).hotkeyDescriptors) {
+      hotkeyDescriptors = (phase7_8 as any).hotkeyDescriptors as Map<string, any>
+    }
+    
+    // ✅ CRITICAL: Fail pipeline on FIRST command validation error
+    if (!phase7_8.success) {
+      return {
+        success: false,
+        phases,
+        manifest,
+        totalDuration: Date.now() - startTime,
+        errors: allErrors,
+        warnings: allWarnings,
+      }
+    }
+  }
+  
   // Phase 7: Code Generation
   if (!fullConfig.skipPhases?.includes(7)) {
-    const phase7 = await runPhase7Codegen(contracts, manifest, fullConfig, descriptors, functionalDescriptors)
+    const phase7 = await runPhase7Codegen(
+      contracts,
+      manifest,
+      fullConfig,
+      descriptors,
+      functionalDescriptors,
+      commandDescriptors,
+      hotkeyDescriptors
+    )
     phases.push(phase7)
     allErrors.push(...phase7.errors)
     allWarnings.push(...phase7.warnings)

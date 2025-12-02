@@ -23,6 +23,11 @@ import { generateFormTypes } from '../../generators/form-types-generator.js'
 import { generateInvariantMapping } from '../../generators/invariant-mapping-generator.js'
 import { generateFunctionalFormDescriptorCode } from '../../generators/functional-code-generator.js'
 import type { CanonicalFunctionalFormDescriptor } from '../../../forms/functional-types.js'
+import { generateCommandsCode, generateHotkeysCode } from '../../generators/command-code-generator.js'
+import type {
+  CanonicalCommandDescriptor,
+  CanonicalHotkeyDescriptor,
+} from '../../../commands/command-canonicalizer.js'
 
 /**
  * Execute Phase 7: Code Generation
@@ -32,7 +37,9 @@ export async function runPhase7Codegen(
   manifest: ActManifest,
   config: ActEngineConfig,
   descriptors?: Map<string, CanonicalFormDescriptor>,
-  functionalDescriptors?: Map<string, CanonicalFunctionalFormDescriptor>
+  functionalDescriptors?: Map<string, CanonicalFunctionalFormDescriptor>,
+  commandDescriptors?: Map<string, CanonicalCommandDescriptor>,
+  hotkeyDescriptors?: Map<string, CanonicalHotkeyDescriptor>
 ): Promise<PhaseResult> {
   const startTime = Date.now()
   const errors: string[] = []
@@ -372,6 +379,75 @@ export async function runPhase7Codegen(
         } else {
           errors.push(`Form descriptor generation failed: ${error.message}`)
         }
+      }
+    }
+    
+    // Sub-phase 7.8: Generate Commands and Hotkeys
+    if (commandDescriptors && commandDescriptors.size > 0) {
+      try {
+        // Ensure commands output directory exists
+        const commandsOutputDir = join(config.workspaceRoot, 'entelechia-ui', 'src', 'generated', 'commands')
+        if (!existsSync(commandsOutputDir)) {
+          mkdirSync(commandsOutputDir, { recursive: true })
+        }
+        
+        // Generate commands.generated.ts
+        const commandsOutputPath = join(commandsOutputDir, 'commands.generated.ts')
+        const commandsCode = generateCommandsCode(commandDescriptors)
+        const commandsWriteResult = writer.writeFile(commandsOutputPath, commandsCode, {
+          banner: {
+            source: 'commands.yaml',
+          },
+          type: 'commands',
+          checkMode: config.checkMode,
+          dryRun: config.dryRun,
+        })
+        
+        if (!commandsWriteResult.success) {
+          if (config.checkMode && commandsWriteResult.error?.includes('Drift detected')) {
+            warnings.push(`Commands would be regenerated: ${commandsWriteResult.error}`)
+          } else {
+            errors.push(`Commands generation failed: ${commandsWriteResult.error}`)
+          }
+        } else if (commandsWriteResult.written) {
+          artifacts.push(commandsOutputPath)
+        }
+      } catch (error: any) {
+        errors.push(`Commands generation failed: ${error.message}`)
+      }
+    }
+    
+    if (hotkeyDescriptors && hotkeyDescriptors.size > 0) {
+      try {
+        // Ensure commands output directory exists
+        const commandsOutputDir = join(config.workspaceRoot, 'entelechia-ui', 'src', 'generated', 'commands')
+        if (!existsSync(commandsOutputDir)) {
+          mkdirSync(commandsOutputDir, { recursive: true })
+        }
+        
+        // Generate hotkeys.generated.ts
+        const hotkeysOutputPath = join(commandsOutputDir, 'hotkeys.generated.ts')
+        const hotkeysCode = generateHotkeysCode(hotkeyDescriptors)
+        const hotkeysWriteResult = writer.writeFile(hotkeysOutputPath, hotkeysCode, {
+          banner: {
+            source: 'commands.yaml',
+          },
+          type: 'hotkeys',
+          checkMode: config.checkMode,
+          dryRun: config.dryRun,
+        })
+        
+        if (!hotkeysWriteResult.success) {
+          if (config.checkMode && hotkeysWriteResult.error?.includes('Drift detected')) {
+            warnings.push(`Hotkeys would be regenerated: ${hotkeysWriteResult.error}`)
+          } else {
+            errors.push(`Hotkeys generation failed: ${hotkeysWriteResult.error}`)
+          }
+        } else if (hotkeysWriteResult.written) {
+          artifacts.push(hotkeysOutputPath)
+        }
+      } catch (error: any) {
+        errors.push(`Hotkeys generation failed: ${error.message}`)
       }
     }
     
