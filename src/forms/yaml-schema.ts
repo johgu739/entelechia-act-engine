@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod'
+import { registry } from '@entelechia/invariant-engine'
 
 /**
  * Functional Binding Schemas (for YAML)
@@ -58,9 +59,26 @@ const ConditionBindingSchema = z.object({
   value: z.any().optional(),
 })
 
+/**
+ * Invariant Binding Schema
+ * 
+ * Validates invariant IDs against registry and ensures they exist.
+ */
 const InvariantBindingSchema = z.object({
-  invariants: z.array(z.string()),
-  enforceAt: z.enum(['build', 'runtime', 'both']).optional(),
+  invariants: z.array(z.string()).refine(
+    (ids) => {
+      // Validate all invariant IDs exist in registry
+      for (const id of ids) {
+        const entry = registry.get(id)
+        if (!entry) {
+          throw new Error(`Invariant ${id} not found in registry. Available invariants: ${registry.getAllInvariantIds().slice(0, 10).join(', ')}...`)
+        }
+      }
+      return true
+    },
+    { message: 'All invariant IDs must exist in registry' }
+  ),
+  enforceAt: z.enum(['build', 'runtime', 'both']).default('both'),
 })
 
 const IntentBindingSchema = z.object({
@@ -101,6 +119,18 @@ export const FormYamlSchema = z.object({
       })
     ).min(1, 'At least one section is required'),
     functional: FunctionalBindingSchema.optional(),
+    // ✅ NEW: Form-level invariants (multilayer enforcement)
+    invariants: InvariantBindingSchema.optional(),
+    // ✅ NEW: Form-level padding (F004: Canonical Padding)
+    padding: z.object({
+      x: z.literal(24).optional(), // Canonical: 24px horizontal
+      y: z.literal(16).optional(), // Canonical: 16px vertical
+    }).optional(),
+    // ✅ NEW: Scroll container declaration (F82: Single Scroll Container)
+    scrollContainer: z.object({
+      id: z.string().optional(),
+      type: z.enum(['form', 'content']).default('form'),
+    }).optional(),
   }),
 })
 

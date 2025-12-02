@@ -19,6 +19,7 @@ import { runPhase5YamlValidation } from './phases/phase-5-yaml-validation.js'
 import { runPhase6Canonicalization } from './phases/phase-6-canonicalization.js'
 import { runPhase6bNavigationCanonicalization } from './phases/phase-6b-navigation-canonicalization.js'
 import { runPhase7_5FunctionalCanonicalization } from './phases/phase-7.5-functional-canonicalization.js'
+import { runPhase7_6InvariantEnforcement } from './phases/phase-7.6-invariant-enforcement.js'
 import { runPhase7Codegen } from './phases/phase-7-codegen.js'
 import { runPhase8DriftCheck } from './phases/phase-8-drift-check.js'
 import { runPhase9UiTypecheck } from './phases/phase-9-ui-typecheck.js'
@@ -269,6 +270,31 @@ export async function runActPipeline(
     
     // Functional canonicalization is non-blocking (warnings only)
     // Don't fail pipeline if functional bindings don't exist
+  }
+  
+  // Phase 7.6: Invariant Canonicalization & Enforcement
+  // ✅ CRITICAL: This phase MUST run before codegen to reject illegal descriptors
+  if (!fullConfig.skipPhases?.includes(7.6)) {
+    const phase7_6 = await runPhase7_6InvariantEnforcement(
+      manifest,
+      fullConfig,
+      descriptors
+    )
+    phases.push(phase7_6)
+    allErrors.push(...phase7_6.errors)
+    allWarnings.push(...phase7_6.warnings)
+    
+    // ✅ CRITICAL: Fail pipeline on FIRST invariant violation
+    if (!phase7_6.success) {
+      return {
+        success: false,
+        phases,
+        manifest,
+        totalDuration: Date.now() - startTime,
+        errors: allErrors,
+        warnings: allWarnings,
+      }
+    }
   }
   
   // Phase 7: Code Generation

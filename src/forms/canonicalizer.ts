@@ -16,10 +16,41 @@ import { validateFormInvariants } from './invariant-validator.js'
  * 
  * This is the generated structure that the UI renderer consumes.
  */
+/**
+ * Scroll Container Descriptor
+ * 
+ * Represents a single scroll container (F82: Single Scroll Container).
+ */
+export interface ScrollContainer {
+  id: string
+  type: 'form' | 'content' | 'dashboard' | 'navigation'
+  element?: 'content' | 'sidebar' | 'header'
+}
+
+/**
+ * Invariant Enforcement Metadata
+ */
+export interface InvariantEnforcementMetadata {
+  id: string
+  enforceAt: 'build' | 'runtime' | 'both'
+  layer: 'FORM' | 'ACT' | 'STATE' | 'RUNTIME' | 'BOTH'
+}
+
 export interface CanonicalFormDescriptor {
   contract: string
   variant: string
   sections: CanonicalSectionDescriptor[]
+  // ✅ NEW: Invariant metadata
+  invariants: {
+    declared: string[] // Invariant IDs declared in YAML
+    enforced: InvariantEnforcementMetadata[] // Invariants enforced on this descriptor
+  }
+  // ✅ NEW: Invariant-encoded constraints
+  scrollContainers: readonly [ScrollContainer] // ✅ F82: Tuple of length 1 (not array)
+  padding: {
+    x: 24 // ✅ F004: Literal type (canonical padding)
+    y: 16 // ✅ F004: Literal type (canonical padding)
+  }
 }
 
 /**
@@ -148,10 +179,41 @@ export function canonicalizeForm(
     }
   })
 
+  // ✅ NEW: Extract invariant metadata from YAML
+  const declaredInvariants = yaml.form.invariants?.invariants || []
+  const enforceAt = yaml.form.invariants?.enforceAt || 'both'
+  
+  // ✅ NEW: Extract padding from YAML (F004: Canonical Padding)
+  const padding = yaml.form.padding || { x: 24, y: 16 } // Default to canonical
+  
+  // ✅ NEW: Extract scroll container declaration (F82: Single Scroll Container)
+  const scrollContainer: ScrollContainer = yaml.form.scrollContainer ? {
+    id: yaml.form.scrollContainer.id || `${yaml.form.contract}.${yaml.form.variant}.scroll`,
+    type: yaml.form.scrollContainer.type || 'form',
+  } : {
+    id: `${yaml.form.contract}.${yaml.form.variant}.scroll`,
+    type: 'form' as const,
+  }
+
   const descriptor: CanonicalFormDescriptor = {
     contract: yaml.form.contract,
     variant: yaml.form.variant,
     sections,
+    // ✅ NEW: Invariant metadata
+    invariants: {
+      declared: declaredInvariants,
+      enforced: declaredInvariants.map(id => ({
+        id,
+        enforceAt,
+        layer: enforceAt === 'build' ? 'ACT' : enforceAt === 'runtime' ? 'RUNTIME' : 'BOTH',
+      })),
+    },
+    // ✅ NEW: Invariant-encoded constraints
+    padding: {
+      x: padding.x ?? 24,
+      y: padding.y ?? 16,
+    },
+    scrollContainers: [scrollContainer], // ✅ F82: Tuple of length 1
   }
 
   // Validate invariants before returning

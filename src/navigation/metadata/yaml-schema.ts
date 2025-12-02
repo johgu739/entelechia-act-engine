@@ -7,15 +7,39 @@
  */
 
 import { z } from 'zod'
+import { registry } from '@entelechia/invariant-engine'
+
+/**
+ * Invariant Binding Schema for Navigation
+ */
+const NavigationInvariantBindingSchema = z.object({
+  invariants: z.array(z.string()).refine(
+    (ids) => {
+      // Validate all invariant IDs exist in registry
+      for (const id of ids) {
+        const entry = registry.get(id)
+        if (!entry) {
+          throw new Error(`Invariant ${id} not found in registry. Available invariants: ${registry.getAllInvariantIds().slice(0, 10).join(', ')}...`)
+        }
+      }
+      return true
+    },
+    { message: 'All invariant IDs must exist in registry' }
+  ),
+  enforceAt: z.enum(['build', 'runtime', 'both']).default('both'),
+})
 
 /**
  * UI Realm Form Schema
+ * 
+ * ✅ F82: Single Scroll Container - scroll: 'content' | 'none' | 'full' (only one allowed)
+ * ✅ F63: Header Singularity - header: 'fixed' | 'none' | 'scrollable' (single value)
  */
 const UIRealmFormSchema = z.object({
   layout: z.enum(['standard', 'fullscreen', 'minimal']),
   navigation: z.enum(['sidebar', 'none', 'tabs']),
   header: z.enum(['fixed', 'none', 'scrollable']),
-  scroll: z.enum(['content', 'none', 'full']),
+  scroll: z.enum(['content', 'none', 'full']), // ✅ F82: Only one scroll allowed
 })
 
 /**
@@ -36,6 +60,8 @@ const UIRealmDefinitionSchema = z.object({
   form: UIRealmFormSchema,
   telos: z.string().min(1, 'Telos is required'),
   layout: UIRealmLayoutSchema,
+  // ✅ NEW: Realm-level invariants (multilayer enforcement)
+  invariants: NavigationInvariantBindingSchema.optional(),
 })
 
 /**
@@ -315,11 +341,16 @@ export type WorkspaceSidebarYaml = z.infer<typeof WorkspaceSidebarYamlSchema>
 /**
  * Dashboard YAML Schema
  */
+/**
+ * Dashboard Layout Schema
+ * 
+ * ✅ F86: Spacing Grid Unity - All spacing values must be multiples of 4px
+ */
 const DashboardLayoutSchema = z.object({
   maxWidth: z.number().int().min(0),
-  horizontalPadding: z.number().int().min(0),
-  verticalPadding: z.number().int().min(0),
-  sectionSpacing: z.number().int().min(0),
+  horizontalPadding: z.number().int().min(0).refine(v => v % 4 === 0, { message: 'Spacing must be 4px grid (F86)' }),
+  verticalPadding: z.number().int().min(0).refine(v => v % 4 === 0, { message: 'Spacing must be 4px grid (F86)' }),
+  sectionSpacing: z.number().int().min(0).refine(v => v % 4 === 0, { message: 'Spacing must be 4px grid (F86)' }),
 })
 
 const DashboardActionSchema = z.object({
@@ -423,6 +454,8 @@ const DashboardDefinitionSchema = z.object({
   description: z.string().optional(),
   layout: DashboardLayoutSchema,
   sections: z.array(DashboardSectionSchema).min(1),
+  // ✅ NEW: Dashboard-level invariants (multilayer enforcement)
+  invariants: NavigationInvariantBindingSchema.optional(),
 })
 
 export const DashboardYamlSchema = z.object({
