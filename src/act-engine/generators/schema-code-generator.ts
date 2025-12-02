@@ -266,10 +266,11 @@ function generateRowSchemaCode(
   if (rowSchema.extends) {
     lines.push(` * Extends: ${rowSchema.extends}`)
   }
-  if (rowSchema.refinements.length > 0) {
+  const refinements = rowSchema.refinements ?? []
+  if (refinements.length > 0) {
     lines.push(' * ')
     lines.push(' * Refinements:')
-    for (const refinement of rowSchema.refinements) {
+    for (const refinement of refinements) {
       lines.push(` * - ${refinement.invariantId}: ${refinement.invariantName}`)
     }
   }
@@ -279,7 +280,7 @@ function generateRowSchemaCode(
   let schemaCode = baseSchemaName
   
   // Apply refinements
-  for (const refinement of rowSchema.refinements) {
+  for (const refinement of refinements) {
     const refinementCode = generateRefinementCode(refinement)
     schemaCode = `${schemaCode}\n  ${refinementCode}`
   }
@@ -456,7 +457,7 @@ function generateTargetFieldCode(
     code = 'z.date()'
   } else {
     // Direct mapping - use same type as source
-    code = mapFieldTypeToZod(sourceField.type, sourceField.constraints)
+    code = mapFieldTypeToZod(sourceField.type, sourceField.constraints ?? [])
     
     // Apply nullability (preserve from source)
     if (sourceField.nullable) {
