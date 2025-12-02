@@ -1,0 +1,36 @@
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Build artifacts
+dist/
+**/dist/
+build/
+**/build/
+
+# TypeScript build info
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Logs
+*.log
+**/*.log
+logs/
+**/logs/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# OS / Editor junk
+.DS_Store
+.vscode/*
+!.vscode/settings.json
+*.swp
+*~
+
+# Package manager locks
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
