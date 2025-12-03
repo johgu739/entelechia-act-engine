@@ -15,8 +15,8 @@
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@entelechia/shared": ["../entelechia-shared/src"],
-      "@entelechia/shared/*": ["../entelechia-shared/src/*"],
+      "@entelechia/contracts": ["../entelechia-shared/src"],
+      "@entelechia/contracts/*": ["../entelechia-shared/src/*"],
       "@entelechia/invariant-engine": ["../invariant-engine/src"],
       "@entelechia/invariant-engine/*": ["../invariant-engine/src/*"]
     }

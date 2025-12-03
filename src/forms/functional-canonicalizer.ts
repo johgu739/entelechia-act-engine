@@ -7,7 +7,7 @@
  * PRINCIPLE: Single source of truth for UI functional bindings.
  */
 
-import type { ContractDefinition, EndpointDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition, EndpointDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import type { FormYaml } from './yaml-schema.js'
 import type {
   CanonicalFunctionalFormDescriptor,
@@ -41,7 +41,7 @@ export async function canonicalizeFunctionalForm(
   aclManifest?: { actions: string[] }
 ): Promise<CanonicalFunctionalFormDescriptor> {
   // Dynamic import from backend (ACL is backend-specific)
-  const actionRegistryPath = join(workspaceRoot, 'entelechia-backend', 'src', 'acl', 'action-registry.ts')
+  const actionRegistryPath = join(workspaceRoot, 'entelechia-core', 'src', 'acl', 'action-registry.ts')
   const actionRegistryModule = await import(`file://${actionRegistryPath}`)
   const validateActionId = actionRegistryModule.validateActionId
   type ActionID = string
@@ -99,7 +99,7 @@ async function validateAndEnrichBinding(
   const enriched: FunctionalBinding = { ...binding }
   
   // Dynamic import from backend (ACL is backend-specific)
-  const actionRegistryPath = join(workspaceRoot, 'entelechia-backend', 'src', 'acl', 'action-registry.ts')
+  const actionRegistryPath = join(workspaceRoot, 'entelechia-core', 'src', 'acl', 'action-registry.ts')
   const actionRegistryModule = await import(`file://${actionRegistryPath}`)
   const validateActionId = actionRegistryModule.validateActionId
   type ActionID = string

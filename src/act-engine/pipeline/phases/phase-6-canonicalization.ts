@@ -12,7 +12,7 @@ import type { ActEngineConfig, PhaseResult } from '../types.js'
 import { FormYamlSchema } from '../../../forms/yaml-schema.js'
 import { canonicalizeForm } from '../../../forms/canonicalizer.js'
 import { validateFormInvariants } from '../../../forms/invariant-validator.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import type { CanonicalFormDescriptor } from '../../../forms/canonicalizer.js'
 
 /**

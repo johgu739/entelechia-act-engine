@@ -9,6 +9,7 @@
 
 import { z } from 'zod'
 import { registry } from '@entelechia/invariant-engine'
+import { ScrollDescriptorSchema } from '../navigation/metadata/scroll-schema.js'
 
 /**
  * Functional Binding Schemas (for YAML)
@@ -248,6 +249,8 @@ export const FormYamlSchema = z.object({
       id: z.string().optional(),
       type: z.enum(['form', 'content']).default('form'),
     }).optional(),
+    // ✅ NEW: Scroll behavior descriptor (kind: 'standard' | 'elastic')
+    scrollBehavior: ScrollDescriptorSchema.optional(),
   }),
 })
 

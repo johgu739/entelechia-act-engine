@@ -25,7 +25,7 @@ The ACT Engine transforms FORM (YAML + contract metadata) into STATE (generated 
 
 ## Dependencies
 
-- `@entelechia/shared` - Contract definitions
+- `@entelechia/contracts` - Contract definitions
 - `@entelechia/invariant-engine` - Invariant definitions
 
 ## Usage

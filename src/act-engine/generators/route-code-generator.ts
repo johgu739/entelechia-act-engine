@@ -16,7 +16,7 @@ import type {
   ValidationDefinition,
   ResponseDefinition,
   InvariantDefinition,
-} from '@entelechia/shared/contracts/metadata/types'
+} from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Generate complete route file code from contract metadata

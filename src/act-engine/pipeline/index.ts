@@ -6,12 +6,13 @@
  * PRINCIPLE: Single entry point for all FORM → STATE transformations.
  */
 
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import type { ActManifest } from '../manifests/types.js'
 import type { ActEngineConfig, PipelineResult } from './types.js'
 import { generateActManifest } from '../manifests/index.js'
 import { runPhase0Manifests } from './phases/phase-0-manifests.js'
 import { runPhase1FormChecks } from './phases/phase-1-form-checks.js'
+import { runPhase1_5ArchitectureGuard } from './phases/phase-1.5-architecture-guard.js'
 import { runPhase2ContractValidation } from './phases/phase-2-contract-validation.js'
 import { runPhase3InvariantValidation } from './phases/phase-3-invariant-validation.js'
 import { runPhase4AclValidation } from './phases/phase-4-acl-validation.js'
@@ -22,6 +23,10 @@ import { runPhase7_5FunctionalCanonicalization } from './phases/phase-7.5-functi
 import { runPhase7_6InvariantEnforcement } from './phases/phase-7.6-invariant-enforcement.js'
 import { runPhase7_7FunctionalCanonicalization } from './phases/phase-7.7-functional-canonicalization.js'
 import { runPhase7_8CommandCanonicalization } from './phases/phase-7.8-command-canonicalization.js'
+import { runPhase8_1InstrumentationCanonicalization } from './phases/phase-8.1-instrumentation-canonicalization.js'
+import { runPhase8_2IntentGraphCanonicalization } from './phases/phase-8.2-intent-graph-canonicalization.js'
+import { runPhase9_0PurityGuardsCanonicalization } from './phases/phase-9.0-purity-guards-canonicalization.js'
+import { runPhase9_1PurityGuardsEnforcement } from './phases/phase-9.1-purity-guards-enforcement.js'
 import { runPhase7Codegen } from './phases/phase-7-codegen.js'
 import { runPhase8DriftCheck } from './phases/phase-8-drift-check.js'
 import { runPhase9UiTypecheck } from './phases/phase-9-ui-typecheck.js'
@@ -32,13 +37,13 @@ import { readFileSync, existsSync } from 'fs'
 
 /**
  * Get workspace root (where package.json is)
- * ACT Engine CLI runs from workspace root, but backend code runs from entelechia-backend/
+ * ACT Engine CLI runs from workspace root, but backend code runs from entelechia-core/
  */
 function getWorkspaceRoot(): string {
   // If we're running from workspace root (npm run act:recompute), use cwd
   // If we're running from backend (direct tsx), go up one level
   const cwd = process.cwd()
-  if (cwd.endsWith('entelechia-backend')) {
+  if (cwd.endsWith('entelechia-core')) {
     return join(cwd, '..')
   }
   // Check if we're in workspace root by looking for package.json with workspaces
@@ -54,7 +59,7 @@ function getWorkspaceRoot(): string {
 }
 
 const WORKSPACE_ROOT = getWorkspaceRoot()
-const BACKEND_ROOT = join(WORKSPACE_ROOT, 'entelechia-backend')
+const BACKEND_ROOT = join(WORKSPACE_ROOT, 'entelechia-core')
 
 /**
  * Default ACT Engine configuration
@@ -142,6 +147,28 @@ export async function runActPipeline(
     allWarnings.push(...phase1.warnings)
     
     if (!phase1.success) {
+      return {
+        success: false,
+        phases,
+        manifest,
+        totalDuration: Date.now() - startTime,
+        errors: allErrors,
+        warnings: allWarnings,
+      }
+    }
+  }
+  
+  // Phase 1.5: Architecture Guard
+  // ✅ CRITICAL: Validates UI code against architectural rules
+  // Runs AFTER Phase 1 (Form Checks) and BEFORE Phase 7.7 (Functional Canonicalization)
+  if (!fullConfig.skipPhases?.includes(1.5)) {
+    const phase1_5 = await runPhase1_5ArchitectureGuard(manifest, fullConfig)
+    phases.push(phase1_5)
+    allErrors.push(...phase1_5.errors)
+    allWarnings.push(...phase1_5.warnings)
+    
+    // ✅ CRITICAL: Fail pipeline on FIRST architectural violation
+    if (!phase1_5.success) {
       return {
         success: false,
         phases,
@@ -369,6 +396,121 @@ export async function runActPipeline(
     }
   }
   
+  // Phase 8.1: Instrumentation Canonicalization (NEW)
+  // Validates telemetry/devtools/ux YAML files against invariants
+  let telemetryDescriptors: Map<string, any> | undefined
+  let devtoolsDescriptors: Map<string, any> | undefined
+  let uxFidelityDescriptors: Map<string, any> | undefined
+  
+  if (!fullConfig.skipPhases?.includes(8.1)) {
+    const phase8_1 = await runPhase8_1InstrumentationCanonicalization(manifest, fullConfig)
+    phases.push(phase8_1)
+    allErrors.push(...phase8_1.errors)
+    allWarnings.push(...phase8_1.warnings)
+    
+    // Extract instrumentation descriptors
+    if ((phase8_1 as any).telemetryDescriptors) {
+      telemetryDescriptors = (phase8_1 as any).telemetryDescriptors as Map<string, any>
+    }
+    if ((phase8_1 as any).devtoolsDescriptors) {
+      devtoolsDescriptors = (phase8_1 as any).devtoolsDescriptors as Map<string, any>
+    }
+    if ((phase8_1 as any).uxFidelityDescriptors) {
+      uxFidelityDescriptors = (phase8_1 as any).uxFidelityDescriptors as Map<string, any>
+    }
+    
+    // ✅ CRITICAL: Fail pipeline on FIRST instrumentation validation error
+    if (!phase8_1.success) {
+      return {
+        success: false,
+        phases,
+        manifest,
+        totalDuration: Date.now() - startTime,
+        errors: allErrors,
+        warnings: allWarnings,
+      }
+    }
+  }
+  
+  // Phase 8.2: IntentGraph Canonicalization (NEW)
+  // Validates intent-graph YAML files against IntentRegistry, ActionRegistry, InvariantRegistry, MetricRegistry
+  let intentGraphDescriptors: Map<string, any> | undefined
+  
+  if (!fullConfig.skipPhases?.includes(8.2)) {
+    const phase8_2 = await runPhase8_2IntentGraphCanonicalization(manifest, fullConfig)
+    phases.push(phase8_2)
+    allErrors.push(...phase8_2.errors)
+    allWarnings.push(...phase8_2.warnings)
+    
+    // Extract intent graph descriptors
+    if ((phase8_2 as any).intentGraphDescriptors) {
+      intentGraphDescriptors = (phase8_2 as any).intentGraphDescriptors as Map<string, any>
+    }
+    
+    // ✅ CRITICAL: Fail pipeline on FIRST IntentGraph validation error
+    if (!phase8_2.success) {
+      return {
+        success: false,
+        phases,
+        manifest,
+        totalDuration: Date.now() - startTime,
+        errors: allErrors,
+        warnings: allWarnings,
+      }
+    }
+  }
+  
+  // Phase 9.0: Purity Guards Canonicalization (NEW)
+  // ✅ ABSOLUTE PURITY: Loads and canonicalizes all six Purity Guards
+  // Runs AFTER Phase 8.2 (IntentGraph) and BEFORE Phase 7 (Codegen)
+  let purityGuards: Map<string, any> | undefined
+  
+  if (!fullConfig.skipPhases?.includes(9.0)) {
+    const phase9_0 = await runPhase9_0PurityGuardsCanonicalization(manifest, fullConfig)
+    phases.push(phase9_0)
+    allErrors.push(...phase9_0.errors)
+    allWarnings.push(...phase9_0.warnings)
+    
+    // Extract purity guards
+    if ((phase9_0 as any).purityGuards) {
+      purityGuards = (phase9_0 as any).purityGuards as Map<string, any>
+    }
+    
+    // ✅ CRITICAL: Fail pipeline on FIRST purity guard loading error
+    if (!phase9_0.success) {
+      return {
+        success: false,
+        phases,
+        manifest,
+        totalDuration: Date.now() - startTime,
+        errors: allErrors,
+        warnings: allWarnings,
+      }
+    }
+  }
+  
+  // Phase 9.1: Purity Guards Enforcement (NEW)
+  // ✅ ABSOLUTE PURITY: Validates entire codebase against all six Purity Guards
+  // Runs AFTER Phase 9.0 (Purity Guards Canonicalization) and BEFORE Phase 7 (Codegen)
+  if (!fullConfig.skipPhases?.includes(9.1) && purityGuards) {
+    const phase9_1 = await runPhase9_1PurityGuardsEnforcement(manifest, fullConfig, purityGuards)
+    phases.push(phase9_1)
+    allErrors.push(...phase9_1.errors)
+    allWarnings.push(...phase9_1.warnings)
+    
+    // ✅ CRITICAL: Fail pipeline on FIRST purity violation
+    if (!phase9_1.success) {
+      return {
+        success: false,
+        phases,
+        manifest,
+        totalDuration: Date.now() - startTime,
+        errors: allErrors,
+        warnings: allWarnings,
+      }
+    }
+  }
+  
   // Phase 7: Code Generation
   if (!fullConfig.skipPhases?.includes(7)) {
     const phase7 = await runPhase7Codegen(
@@ -378,7 +520,12 @@ export async function runActPipeline(
       descriptors,
       functionalDescriptors,
       commandDescriptors,
-      hotkeyDescriptors
+      hotkeyDescriptors,
+      telemetryDescriptors,
+      devtoolsDescriptors,
+      uxFidelityDescriptors,
+      intentGraphDescriptors,
+      purityGuards
     )
     phases.push(phase7)
     allErrors.push(...phase7.errors)

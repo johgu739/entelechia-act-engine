@@ -9,7 +9,7 @@
  * Sections must match allowed order (via invariants).
  */
 
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import type { FormYaml } from './yaml-schema.js'
 
 /**

@@ -1,0 +1,16 @@
+version: 1
+name: entelechia-act-engine
+layer: ACT
+finalCause: >
+  Transform FORM (contracts, invariants, schemas) into concrete STATE artefacts
+  via pipelines, validators, canonicalizers and generators. No direct runtime,
+  no UI.
+parent: entelechia-invariant-engine
+allowedChildren:
+  - entelechia-core
+forbiddenImports:
+  - entelechia-core
+  - entelechia-ui
+  - entelechia-design-system
+  - entelechia-contract-wall
+  - entelechia-topology

@@ -7,10 +7,11 @@
  * and saved into entelechia-ui/src/generated/forms/
  */
 
-import type { ContractDefinition, FieldDefinition, ProjectionCapabilities } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition, FieldDefinition, ProjectionCapabilities } from '@entelechia/contracts/contracts/metadata/types'
 import type { FormYaml } from './yaml-schema.js'
 import type { FunctionalBinding } from './functional-types.js'
 import { validateFormInvariants } from './invariant-validator.js'
+import type { ScrollDescriptor } from '../navigation/metadata/scroll-schema.js'
 
 /**
  * Canonical form descriptor
@@ -65,6 +66,8 @@ export interface CanonicalFormDescriptor {
   canonicalSpacing: CanonicalSpacing
   // ✅ NEW: Canonical grid (literal type)
   canonicalGrid: CanonicalGrid
+  // ✅ NEW: Scroll behavior descriptor (from FORM)
+  scrollBehavior?: ScrollDescriptor
   // ✅ PHASE 3: Functional bindings (optional - only if functional YAML exists)
   functional?: import('./functional-types.js').FunctionalBinding
 }
@@ -210,6 +213,9 @@ export function canonicalizeForm(
     id: `${yaml.form.contract}.${yaml.form.variant}.scroll`,
     type: 'form' as const,
   }
+  
+  // ✅ NEW: Extract scroll behavior descriptor
+  const scrollBehavior = yaml.form.scrollBehavior
 
   // ✅ Ensure canonical values (enforce literal types)
   const canonicalPaddingX: CanonicalPaddingX = (padding.x ?? 24) as CanonicalPaddingX
@@ -247,6 +253,8 @@ export function canonicalizeForm(
     // ✅ NEW: Canonical spacing and grid (literal types)
     canonicalSpacing,
     canonicalGrid,
+    // ✅ NEW: Scroll behavior descriptor (if present in YAML)
+    scrollBehavior,
     // ✅ PHASE 3: Functional bindings (if present in YAML)
     functional: yaml.form.functional ? yaml.form.functional as FunctionalBinding : undefined,
   }

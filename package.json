@@ -39,8 +39,8 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
-    "@entelechia/shared": "file:../entelechia-shared",
-    "@entelechia/invariant-engine": "file:../invariant-engine",
+    "@entelechia/contracts": "workspace:*",
+    "@entelechia/invariant-engine": "workspace:*",
     "yaml": "^2.8.2",
     "zod": "^3.22.4"
   },

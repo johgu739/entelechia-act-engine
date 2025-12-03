@@ -12,7 +12,7 @@
  */
 
 import type { CanonicalFormDescriptor } from './canonicalizer.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import { registry } from '@entelechia/invariant-engine'
 
 /**

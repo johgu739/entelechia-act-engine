@@ -6,7 +6,7 @@
 
 import type { ActManifest } from '../../manifests/types.js'
 import type { ActEngineConfig, PhaseResult } from '../types.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import { join } from 'path'
 
 /**
@@ -21,7 +21,7 @@ export async function runPhase2ContractValidation(
   
   try {
     // Dynamic import from backend (metadata validator is backend-specific)
-    const metadataValidatorPath = join(config.workspaceRoot, 'entelechia-backend', 'src', 'contracts', 'metadata', 'metadata-validator.ts')
+    const metadataValidatorPath = join(config.workspaceRoot, 'entelechia-core', 'src', 'contracts', 'metadata', 'metadata-validator.ts')
     const metadataValidatorModule = await import(`file://${metadataValidatorPath}`)
     const validateAllMetadata = metadataValidatorModule.validateAllMetadata
     

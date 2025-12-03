@@ -16,7 +16,7 @@ import type {
   DBIndexDefinition,
   DBTriggerDefinition,
   DBForeignKeyDefinition,
-} from '@entelechia/shared/contracts/metadata/types'
+} from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Generate complete migration file code from contract metadata

@@ -13,15 +13,15 @@
    - `entelechia-backend/src/navigation/**` → `packages/act-engine/src/navigation/`
 
 3. **Imports uppdaterade (delvis)**
-   - Relativa imports för `ContractDefinition` uppdaterade till `@entelechia/shared` (men typerna finns inte där ännu)
+   - Relativa imports för `ContractDefinition` uppdaterade till `@entelechia/contracts` (men typerna finns inte där ännu)
    - CLI uppdaterad att dynamiskt ladda metadata från backend
 
 ## ⚠️ Kvarvarande problem
 
 1. **ContractDefinition typer**
    - `ContractDefinition` ligger i `entelechia-backend/src/contracts/metadata/types.ts`
-   - ACT-engine försöker importera från `@entelechia/shared/contracts/metadata/types` men den finns inte där
-   - **Lösning behövs**: Flytta `ContractDefinition` och relaterade typer till `@entelechia/shared` eller skapa en wrapper
+   - ACT-engine försöker importera från `@entelechia/contracts/contracts/metadata/types` men den finns inte där
+   - **Lösning behövs**: Flytta `ContractDefinition` och relaterade typer till `@entelechia/contracts` eller skapa en wrapper
 
 2. **Backend-specifika imports**
    - ACL (`role-compiler`, `action-registry`) importeras relativt från backend

@@ -24,7 +24,7 @@ import { registry } from '@entelechia/invariant-engine'
 import type { PhaseResult } from '../types.js'
 import type { ActEngineConfig } from '../types.js'
 import type { ActManifest } from '../../manifests/types.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import { FormYamlSchema, type FormYaml } from '../../../forms/yaml-schema.js'
 import { canonicalizeFunctionalForm } from '../../../forms/functional-canonicalizer.js'
 import {
@@ -196,7 +196,7 @@ async function validateFunctionalBinding(
   const errors: FunctionalValidationError[] = []
   
   // Dynamic import from backend (ACL is backend-specific)
-  const actionRegistryPath = join(workspaceRoot, 'entelechia-backend', 'src', 'acl', 'action-registry.ts')
+  const actionRegistryPath = join(workspaceRoot, 'entelechia-core', 'src', 'acl', 'action-registry.ts')
   let validateActionId: ((actionId: string) => boolean) | null = null
   try {
     const actionRegistryModule = await import(`file://${actionRegistryPath}`)

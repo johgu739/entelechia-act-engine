@@ -23,6 +23,9 @@ export interface CanonicalCommandDescriptor {
   label: string
   description?: string
   category: 'workspace' | 'navigation' | 'system' | 'debug'
+  scope: 'domain' | 'navigation' | 'system' | 'devtools'
+  requiresIntent: boolean
+  mustExistInIntentGraph: boolean
   capability: string // ActionID
   mutation?: CommandMutationBinding
   navigation?: NavigationBinding
@@ -148,12 +151,54 @@ export function canonicalizeCommands(
       }
     }
     
+    // Validate scope rules
+    if (commandDesc.scope === 'domain') {
+      // Domain commands MUST have intentId
+      if (!commandDesc.mutation || commandDesc.mutation.type !== 'intent' || !commandDesc.mutation.intentId) {
+        errors.push({
+          commandId: commandDesc.id,
+          field: 'mutation.intentId',
+          message: `Domain command must have mutation.type="intent" with intentId`,
+          level: 'error',
+        })
+      }
+      if (!commandDesc.requiresIntent || !commandDesc.mustExistInIntentGraph) {
+        errors.push({
+          commandId: commandDesc.id,
+          field: 'scope/requiresIntent',
+          message: `Domain command must have requiresIntent=true and mustExistInIntentGraph=true`,
+          level: 'error',
+        })
+      }
+    } else if (['navigation', 'system', 'devtools'].includes(commandDesc.scope)) {
+      // Non-domain commands MUST NOT have intentId
+      if (commandDesc.mutation && commandDesc.mutation.type === 'intent') {
+        errors.push({
+          commandId: commandDesc.id,
+          field: 'mutation.type',
+          message: `Non-domain command (scope=${commandDesc.scope}) must not have mutation.type="intent"`,
+          level: 'error',
+        })
+      }
+      if (commandDesc.requiresIntent || commandDesc.mustExistInIntentGraph) {
+        errors.push({
+          commandId: commandDesc.id,
+          field: 'scope/requiresIntent',
+          message: `Non-domain command (scope=${commandDesc.scope}) must have requiresIntent=false and mustExistInIntentGraph=false`,
+          level: 'error',
+        })
+      }
+    }
+    
     // Build canonical command descriptor
     const canonicalCommand: CanonicalCommandDescriptor = {
       id: commandDesc.id,
       label: commandDesc.label,
       description: commandDesc.description,
       category: commandDesc.category,
+      scope: commandDesc.scope,
+      requiresIntent: commandDesc.requiresIntent,
+      mustExistInIntentGraph: commandDesc.mustExistInIntentGraph,
       capability: commandDesc.capability,
       mutation: commandDesc.mutation,
       navigation: commandDesc.navigation,
@@ -215,6 +260,81 @@ export function validateCommandsAgainstIntentRegistry(
           commandId: command.id,
           field: 'mutation.intentId',
           message: `Invalid IntentID "${command.mutation.intentId}" not found in IntentRegistry`,
+          level: 'error',
+        })
+      }
+    }
+  }
+  
+  return errors
+}
+
+/**
+ * Validate command-intent binding coherence
+ * 
+ * Validates:
+ * - Domain commands MUST have intentId that exists in IntentGraph
+ * - Non-domain commands MUST NOT have intentId
+ * - Domain commands MUST have requiresIntent=true and mustExistInIntentGraph=true
+ * - Non-domain commands MUST have requiresIntent=false and mustExistInIntentGraph=false
+ * 
+ * This implements invariant COMMAND_INTENT_BINDING_COHERENCE.F91
+ */
+export function validateCommandIntentBindingCoherence(
+  commands: CanonicalCommandDescriptor[],
+  intentGraphIntentIds: Set<string> // Set of IntentIDs from IntentGraph
+): CommandValidationError[] {
+  const errors: CommandValidationError[] = []
+  
+  for (const command of commands) {
+    if (command.scope === 'domain') {
+      // Domain commands MUST have intentId
+      if (!command.mutation || command.mutation.type !== 'intent' || !command.mutation.intentId) {
+        errors.push({
+          commandId: command.id,
+          field: 'mutation.intentId',
+          message: `Domain command (scope=domain) must have mutation.type="intent" with intentId`,
+          level: 'error',
+        })
+        continue
+      }
+      
+      // Domain commands MUST exist in IntentGraph
+      if (!intentGraphIntentIds.has(command.mutation.intentId)) {
+        errors.push({
+          commandId: command.id,
+          field: 'mutation.intentId',
+          message: `Domain command intentId "${command.mutation.intentId}" not found in IntentGraph`,
+          level: 'error',
+        })
+      }
+      
+      // Domain commands MUST have requiresIntent=true and mustExistInIntentGraph=true
+      if (!command.requiresIntent || !command.mustExistInIntentGraph) {
+        errors.push({
+          commandId: command.id,
+          field: 'requiresIntent/mustExistInIntentGraph',
+          message: `Domain command must have requiresIntent=true and mustExistInIntentGraph=true`,
+          level: 'error',
+        })
+      }
+    } else if (['navigation', 'system', 'devtools'].includes(command.scope)) {
+      // Non-domain commands MUST NOT have intentId
+      if (command.mutation && command.mutation.type === 'intent') {
+        errors.push({
+          commandId: command.id,
+          field: 'mutation.type',
+          message: `Non-domain command (scope=${command.scope}) must not have mutation.type="intent"`,
+          level: 'error',
+        })
+      }
+      
+      // Non-domain commands MUST have requiresIntent=false and mustExistInIntentGraph=false
+      if (command.requiresIntent || command.mustExistInIntentGraph) {
+        errors.push({
+          commandId: command.id,
+          field: 'requiresIntent/mustExistInIntentGraph',
+          message: `Non-domain command (scope=${command.scope}) must have requiresIntent=false and mustExistInIntentGraph=false`,
           level: 'error',
         })
       }

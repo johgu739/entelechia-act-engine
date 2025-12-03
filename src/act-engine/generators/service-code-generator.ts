@@ -13,7 +13,7 @@ import type {
   TransformationDefinition,
   FieldMappingDefinition,
   FieldDefinition,
-} from '@entelechia/shared/contracts/metadata/types'
+} from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Generate complete service file code from contract metadata

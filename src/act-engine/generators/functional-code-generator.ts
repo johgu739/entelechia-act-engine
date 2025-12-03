@@ -7,7 +7,7 @@
  */
 
 import type { CanonicalFunctionalFormDescriptor } from '../../forms/functional-types.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Generate functional form descriptor TypeScript code

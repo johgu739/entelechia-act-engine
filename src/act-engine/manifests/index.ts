@@ -4,7 +4,7 @@
  * Main entry point for generating all ACT manifests.
  */
 
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import type { ActManifest, ContractActManifest, FormActManifest } from './types.js'
 import { generateContractManifest } from './contract-manifest.js'
 import { generateFormManifestsForContract } from './form-manifest.js'

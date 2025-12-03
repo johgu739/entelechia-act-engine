@@ -8,6 +8,7 @@
 
 import { z } from 'zod'
 import { registry } from '@entelechia/invariant-engine'
+import { ScrollDescriptorSchema } from './scroll-schema.js'
 
 /**
  * Invariant Binding Schema for Navigation
@@ -34,12 +35,14 @@ const NavigationInvariantBindingSchema = z.object({
  * 
  * ✅ F82: Single Scroll Container - scroll: 'content' | 'none' | 'full' (only one allowed)
  * ✅ F63: Header Singularity - header: 'fixed' | 'none' | 'scrollable' (single value)
+ * ✅ NEW: Scroll behavior descriptor (kind: 'standard' | 'elastic')
  */
 const UIRealmFormSchema = z.object({
   layout: z.enum(['standard', 'fullscreen', 'minimal']),
   navigation: z.enum(['sidebar', 'none', 'tabs']),
   header: z.enum(['fixed', 'none', 'scrollable']),
   scroll: z.enum(['content', 'none', 'full']), // ✅ F82: Only one scroll allowed
+  scrollBehavior: ScrollDescriptorSchema.optional(), // ✅ NEW: Scroll kind/elasticity (only if scroll === 'content')
 })
 
 /**
@@ -162,6 +165,7 @@ export const ChatLayoutYamlSchema = z.object({
       paddingY: z.number(),
       maxWidth: z.number(),
       centerContent: z.boolean(),
+      scrollBehavior: ScrollDescriptorSchema.optional(), // ✅ NEW: Scroll kind/elasticity
     }),
     emptyState: z.object({
       text: z.string(),
@@ -458,6 +462,8 @@ const DashboardDefinitionSchema = z.object({
   sections: z.array(DashboardSectionSchema).min(1),
   // ✅ NEW: Dashboard-level invariants (multilayer enforcement)
   invariants: NavigationInvariantBindingSchema.optional(),
+  // ✅ NEW: Dashboard scroll behavior (for main scroll region)
+  scrollBehavior: ScrollDescriptorSchema.optional(),
 })
 
 export const DashboardYamlSchema = z.object({

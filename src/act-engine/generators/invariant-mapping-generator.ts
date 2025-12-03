@@ -51,9 +51,9 @@ export function generateInvariantMapping(
   lines.push('/**')
   lines.push(' * Invariant metadata map')
   lines.push(' * Key: Invariant ID (e.g., "DOMAIN_LOGIC.F2")')
-  lines.push(' * Value: Invariant metadata')
+  lines.push(' * Value: Invariant metadata (without enforce function - use registry.get() for runtime enforcement)')
   lines.push(' */')
-  lines.push('export const INVARIANT_METADATA: Record<string, InvariantMetadata> = {')
+  lines.push('export const INVARIANT_METADATA: Record<string, Omit<InvariantMetadata, "enforce"> & { enforce?: (node: HTMLElement | null, context: any) => void }> = {')
   
   for (const id of allInvariants.sort()) {
     const entry = registry.get(id)
@@ -69,7 +69,8 @@ export function generateInvariantMapping(
     lines.push(`    severity: '${metadata.severity}',`)
     // Note: enforce is a function, not a boolean - we can't serialize it
     // The generated mapping will have enforce: undefined, runtime code should check registry
-    lines.push(`    enforce: undefined,`)
+    // Using optional enforce to satisfy type checker
+    lines.push(`    enforce: undefined as (node: HTMLElement | null, context: any) => void | undefined,`)
     lines.push('  },')
   }
   

@@ -28,6 +28,8 @@ import {
   type NodeDetailSectionsYaml,
   WorkspaceSidebarYamlSchema,
   type WorkspaceSidebarYaml,
+  ChatLayoutYamlSchema,
+  type ChatLayoutYaml,
 } from '../../../navigation/metadata/yaml-schema.js'
 
 export interface InvariantViolation {
@@ -144,6 +146,21 @@ export async function runPhase7_6InvariantEnforcement(
           violations.push(...sidebarViolations)
         } catch (error: any) {
           warnings.push(`Skipping Workspace Sidebar invariant check: ${error.message}`)
+        }
+      }
+      
+      // Chat Layout
+      const chatLayoutYamlPath = join(navigationYamlDir, 'chat-layout.yaml')
+      if (existsSync(chatLayoutYamlPath)) {
+        try {
+          const content = readFileSync(chatLayoutYamlPath, 'utf-8')
+          const yamlData = parse(content)
+          const chatLayoutYaml = ChatLayoutYamlSchema.parse(yamlData)
+          
+          const chatViolations = evaluateInvariantsOnChatLayout(chatLayoutYaml)
+          violations.push(...chatViolations)
+        } catch (error: any) {
+          warnings.push(`Skipping Chat Layout invariant check: ${error.message}`)
         }
       }
     }
@@ -301,6 +318,59 @@ function evaluateInvariantsOnUIRealm(
       message: `Realm "${realm.id}" has invalid scroll value: ${realm.form.scroll}. Must be 'content', 'none', or 'full'.`,
       details: { scroll: realm.form.scroll },
     })
+  }
+  
+  // ✅ NEW: Scroll behavior validation
+  // If scroll === 'content', scrollBehavior should be defined
+  if (realm.form.scroll === 'content' && !realm.form.scrollBehavior) {
+    violations.push({
+      invariantId: 'UI_SCROLL.F82',
+      descriptorType: 'navigation',
+      descriptorKey,
+      message: `Realm "${realm.id}" has scroll: 'content' but missing scrollBehavior declaration`,
+      details: { scroll: realm.form.scroll },
+    })
+  }
+  
+  // If scrollBehavior is defined, validate it
+  if (realm.form.scrollBehavior) {
+    const scrollBehavior = realm.form.scrollBehavior
+    
+    // Elastic scroll must have at least one UI_SCROLL invariant
+    if (scrollBehavior.kind === 'elastic') {
+      const hasUIScrollInvariant = scrollBehavior.invariants?.some(id => id.startsWith('UI_SCROLL.'))
+      if (!hasUIScrollInvariant) {
+        violations.push({
+          invariantId: 'UI_SCROLL.F90',
+          descriptorType: 'navigation',
+          descriptorKey,
+          message: `Realm "${realm.id}" has elastic scroll but missing UI_SCROLL invariant declaration`,
+          details: { scrollBehavior },
+        })
+      }
+      
+      // Elasticity must be defined for elastic scroll
+      if (!scrollBehavior.elasticity) {
+        violations.push({
+          invariantId: 'UI_SCROLL.F90',
+          descriptorType: 'navigation',
+          descriptorKey,
+          message: `Realm "${realm.id}" has elastic scroll but missing elasticity value`,
+          details: { scrollBehavior },
+        })
+      }
+    }
+    
+    // Standard scroll should not have elasticity
+    if (scrollBehavior.kind === 'standard' && scrollBehavior.elasticity) {
+      violations.push({
+        invariantId: 'UI_SCROLL.F90',
+        descriptorType: 'navigation',
+        descriptorKey,
+        message: `Realm "${realm.id}" has standard scroll but elasticity is defined (should only be for elastic)`,
+        details: { scrollBehavior },
+      })
+    }
   }
   
   // F63: Header Singularity
@@ -529,6 +599,47 @@ function evaluateInvariantsOnDashboardYaml(
   // We can't fully validate this from YAML alone, but we can check that the layout
   // doesn't explicitly define multiple scroll containers
   
+  // ✅ NEW: Scroll behavior validation for dashboards
+  if (dashboard.scrollBehavior) {
+    const scrollBehavior = dashboard.scrollBehavior
+    
+    // Elastic scroll must have at least one UI_SCROLL invariant
+    if (scrollBehavior.kind === 'elastic') {
+      const hasUIScrollInvariant = scrollBehavior.invariants?.some(id => id.startsWith('UI_SCROLL.'))
+      if (!hasUIScrollInvariant) {
+        violations.push({
+          invariantId: 'UI_SCROLL.F90',
+          descriptorType: 'dashboard',
+          descriptorKey,
+          message: `Dashboard "${descriptorKey}" has elastic scroll but missing UI_SCROLL invariant declaration`,
+          details: { scrollBehavior },
+        })
+      }
+      
+      // Elasticity must be defined for elastic scroll
+      if (!scrollBehavior.elasticity) {
+        violations.push({
+          invariantId: 'UI_SCROLL.F90',
+          descriptorType: 'dashboard',
+          descriptorKey,
+          message: `Dashboard "${descriptorKey}" has elastic scroll but missing elasticity value`,
+          details: { scrollBehavior },
+        })
+      }
+    }
+    
+    // Standard scroll should not have elasticity
+    if (scrollBehavior.kind === 'standard' && scrollBehavior.elasticity) {
+      violations.push({
+        invariantId: 'UI_SCROLL.F90',
+        descriptorType: 'dashboard',
+        descriptorKey,
+        message: `Dashboard "${descriptorKey}" has standard scroll but elasticity is defined (should only be for elastic)`,
+        details: { scrollBehavior },
+      })
+    }
+  }
+  
   // Validate declared invariants
   if (dashboard.invariants?.invariants) {
     for (const invariantId of dashboard.invariants.invariants) {
@@ -554,6 +665,64 @@ function evaluateInvariantsOnDashboardYaml(
           break
         // Add more invariant-specific checks as needed
       }
+    }
+  }
+  
+  return violations
+}
+
+/**
+ * Evaluate invariants on Chat Layout
+ * 
+ * Validates chat layout scroll behavior:
+ * - F88: Chat Layout Constraints
+ * - F89: Section Scroll Canon
+ * - F90: Height Constraint Purity
+ */
+function evaluateInvariantsOnChatLayout(
+  chatLayoutYaml: ChatLayoutYaml
+): InvariantViolation[] {
+  const violations: InvariantViolation[] = []
+  const descriptorKey = 'chat-layout'
+  
+  // Validate scroll region scroll behavior
+  if (chatLayoutYaml.chat.scrollRegion.scrollBehavior) {
+    const scrollBehavior = chatLayoutYaml.chat.scrollRegion.scrollBehavior
+    
+    // Elastic scroll must have at least one UI_SCROLL invariant
+    if (scrollBehavior.kind === 'elastic') {
+      const hasUIScrollInvariant = scrollBehavior.invariants?.some(id => id.startsWith('UI_SCROLL.'))
+      if (!hasUIScrollInvariant) {
+        violations.push({
+          invariantId: 'UI_SCROLL.F90',
+          descriptorType: 'navigation',
+          descriptorKey,
+          message: `Chat layout has elastic scroll but missing UI_SCROLL invariant declaration`,
+          details: { scrollBehavior },
+        })
+      }
+      
+      // Elasticity must be defined for elastic scroll
+      if (!scrollBehavior.elasticity) {
+        violations.push({
+          invariantId: 'UI_SCROLL.F90',
+          descriptorType: 'navigation',
+          descriptorKey,
+          message: `Chat layout has elastic scroll but missing elasticity value`,
+          details: { scrollBehavior },
+        })
+      }
+    }
+    
+    // Standard scroll should not have elasticity
+    if (scrollBehavior.kind === 'standard' && scrollBehavior.elasticity) {
+      violations.push({
+        invariantId: 'UI_SCROLL.F90',
+        descriptorType: 'navigation',
+        descriptorKey,
+        message: `Chat layout has standard scroll but elasticity is defined (should only be for elastic)`,
+        details: { scrollBehavior },
+      })
     }
   }
   

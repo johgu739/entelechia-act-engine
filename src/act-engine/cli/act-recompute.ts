@@ -12,7 +12,7 @@
 import { runActPipeline, DEFAULT_ACT_CONFIG } from '../pipeline/index.js'
 import { join } from 'path'
 import { readFileSync, existsSync } from 'fs'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Load contract metadata from backend
@@ -21,7 +21,7 @@ import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/t
 async function loadContractMetadata(workspaceRoot: string): Promise<ContractDefinition[]> {
   // Try to import from backend metadata
   // This is a CLI-only dependency - ACT-engine core doesn't depend on backend
-  const backendMetadataPath = join(workspaceRoot, 'entelechia-backend', 'src', 'contracts', 'metadata', 'index.ts')
+  const backendMetadataPath = join(workspaceRoot, 'entelechia-core', 'src', 'contracts', 'metadata', 'index.ts')
   
   if (!existsSync(backendMetadataPath)) {
     throw new Error(`Backend metadata not found at ${backendMetadataPath}`)
@@ -85,7 +85,7 @@ async function main() {
       }
     } catch (error: any) {
       // Try going up from backend directory
-      if (workspaceRoot.endsWith('entelechia-backend')) {
+      if (workspaceRoot.endsWith('entelechia-core')) {
         workspaceRoot = join(workspaceRoot, '..')
         packageJsonPath = join(workspaceRoot, 'package.json')
         if (existsSync(packageJsonPath)) {

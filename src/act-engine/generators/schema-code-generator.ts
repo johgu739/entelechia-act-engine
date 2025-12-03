@@ -19,7 +19,7 @@ import type {
   FieldType,
   TransformationDefinition,
   FieldMappingDefinition,
-} from '@entelechia/shared/contracts/metadata/types'
+} from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Generate complete schema file code from contract metadata

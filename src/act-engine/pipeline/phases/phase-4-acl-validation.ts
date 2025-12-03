@@ -21,8 +21,8 @@ export async function runPhase4AclValidation(
   
   try {
     // Dynamic import from backend (ACL is backend-specific)
-    const roleCompilerPath = join(config.workspaceRoot, 'entelechia-backend', 'src', 'acl', 'role-compiler.ts')
-    const actionRegistryPath = join(config.workspaceRoot, 'entelechia-backend', 'src', 'acl', 'action-registry.ts')
+    const roleCompilerPath = join(config.workspaceRoot, 'entelechia-core', 'src', 'acl', 'role-compiler.ts')
+    const actionRegistryPath = join(config.workspaceRoot, 'entelechia-core', 'src', 'acl', 'action-registry.ts')
     
     const roleCompilerModule = await import(`file://${roleCompilerPath}`)
     const actionRegistryModule = await import(`file://${actionRegistryPath}`)

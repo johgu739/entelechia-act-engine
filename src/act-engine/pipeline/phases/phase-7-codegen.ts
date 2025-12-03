@@ -6,7 +6,7 @@
 
 import type { ActManifest } from '../../manifests/types.js'
 import type { ActEngineConfig, PhaseResult } from '../types.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import type { CanonicalFormDescriptor } from '../../../forms/canonicalizer.js'
 import { DeterministicWriter } from '../../writers/deterministic-writer.js'
 import { join } from 'path'
@@ -24,10 +24,24 @@ import { generateInvariantMapping } from '../../generators/invariant-mapping-gen
 import { generateFunctionalFormDescriptorCode } from '../../generators/functional-code-generator.js'
 import type { CanonicalFunctionalFormDescriptor } from '../../../forms/functional-types.js'
 import { generateCommandsCode, generateHotkeysCode } from '../../generators/command-code-generator.js'
+import {
+  generateTelemetryCode,
+  generateDevToolsCode,
+  generateUXFidelityCode,
+} from '../../generators/instrumentation-code-generator.js'
+import { generateIntentGraphCode } from '../../generators/intent-graph-code-generator.js'
+import { generatePurityGuardsCode } from '../../generators/purity-guards-code-generator.js'
 import type {
   CanonicalCommandDescriptor,
   CanonicalHotkeyDescriptor,
 } from '../../../commands/command-canonicalizer.js'
+import type { CanonicalPurityGuardDescriptor } from '../../../purity-guards/purity-guards-canonicalizer.js'
+import type {
+  CanonicalTelemetryDescriptor,
+  CanonicalDevToolsDescriptor,
+  CanonicalUXFidelityDescriptor,
+} from '../../../instrumentation/index.js'
+import type { CanonicalIntentGraphDescriptor } from '../../../intent-graph/intent-graph-types.js'
 
 /**
  * Execute Phase 7: Code Generation
@@ -39,7 +53,12 @@ export async function runPhase7Codegen(
   descriptors?: Map<string, CanonicalFormDescriptor>,
   functionalDescriptors?: Map<string, CanonicalFunctionalFormDescriptor>,
   commandDescriptors?: Map<string, CanonicalCommandDescriptor>,
-  hotkeyDescriptors?: Map<string, CanonicalHotkeyDescriptor>
+  hotkeyDescriptors?: Map<string, CanonicalHotkeyDescriptor>,
+  telemetryDescriptors?: Map<string, CanonicalTelemetryDescriptor>,
+  devtoolsDescriptors?: Map<string, CanonicalDevToolsDescriptor>,
+  uxFidelityDescriptors?: Map<string, CanonicalUXFidelityDescriptor>,
+  intentGraphDescriptors?: Map<string, CanonicalIntentGraphDescriptor>,
+  purityGuards?: Map<string, CanonicalPurityGuardDescriptor>
 ): Promise<PhaseResult> {
   const startTime = Date.now()
   const errors: string[] = []
@@ -448,6 +467,193 @@ export async function runPhase7Codegen(
         }
       } catch (error: any) {
         errors.push(`Hotkeys generation failed: ${error.message}`)
+      }
+    }
+    
+    // Sub-phase 7.9: Generate Instrumentation Descriptors
+    if (telemetryDescriptors && telemetryDescriptors.size > 0) {
+      try {
+        const instrumentationOutputDir = join(config.workspaceRoot, 'entelechia-ui', 'src', 'generated', 'instrumentation')
+        if (!existsSync(instrumentationOutputDir)) {
+          mkdirSync(instrumentationOutputDir, { recursive: true })
+        }
+        
+        const telemetryOutputPath = join(instrumentationOutputDir, 'telemetry.generated.ts')
+        const telemetryCode = generateTelemetryCode(telemetryDescriptors)
+        const telemetryWriteResult = writer.writeFile(telemetryOutputPath, telemetryCode, {
+          banner: {
+            source: 'telemetry/*.yaml',
+          },
+          type: 'telemetry',
+          checkMode: config.checkMode,
+          dryRun: config.dryRun,
+        })
+        
+        if (!telemetryWriteResult.success) {
+          if (config.checkMode && telemetryWriteResult.error?.includes('Drift detected')) {
+            warnings.push(`Telemetry would be regenerated: ${telemetryWriteResult.error}`)
+          } else {
+            errors.push(`Telemetry generation failed: ${telemetryWriteResult.error}`)
+          }
+        } else if (telemetryWriteResult.written) {
+          artifacts.push(telemetryOutputPath)
+        }
+      } catch (error: any) {
+        errors.push(`Telemetry generation failed: ${error.message}`)
+      }
+    }
+    
+    if (devtoolsDescriptors && devtoolsDescriptors.size > 0) {
+      try {
+        const instrumentationOutputDir = join(config.workspaceRoot, 'entelechia-ui', 'src', 'generated', 'instrumentation')
+        if (!existsSync(instrumentationOutputDir)) {
+          mkdirSync(instrumentationOutputDir, { recursive: true })
+        }
+        
+        const devtoolsOutputPath = join(instrumentationOutputDir, 'devtools.generated.ts')
+        const devtoolsCode = generateDevToolsCode(devtoolsDescriptors)
+        const devtoolsWriteResult = writer.writeFile(devtoolsOutputPath, devtoolsCode, {
+          banner: {
+            source: 'devtools/*.yaml',
+          },
+          type: 'devtools',
+          checkMode: config.checkMode,
+          dryRun: config.dryRun,
+        })
+        
+        if (!devtoolsWriteResult.success) {
+          if (config.checkMode && devtoolsWriteResult.error?.includes('Drift detected')) {
+            warnings.push(`DevTools would be regenerated: ${devtoolsWriteResult.error}`)
+          } else {
+            errors.push(`DevTools generation failed: ${devtoolsWriteResult.error}`)
+          }
+        } else if (devtoolsWriteResult.written) {
+          artifacts.push(devtoolsOutputPath)
+        }
+      } catch (error: any) {
+        errors.push(`DevTools generation failed: ${error.message}`)
+      }
+    }
+    
+    if (uxFidelityDescriptors && uxFidelityDescriptors.size > 0) {
+      try {
+        const instrumentationOutputDir = join(config.workspaceRoot, 'entelechia-ui', 'src', 'generated', 'instrumentation')
+        if (!existsSync(instrumentationOutputDir)) {
+          mkdirSync(instrumentationOutputDir, { recursive: true })
+        }
+        
+        const uxFidelityOutputPath = join(instrumentationOutputDir, 'ux-fidelity.generated.ts')
+        const uxFidelityCode = generateUXFidelityCode(uxFidelityDescriptors)
+        const uxFidelityWriteResult = writer.writeFile(uxFidelityOutputPath, uxFidelityCode, {
+          banner: {
+            source: 'ux/*.yaml',
+          },
+          type: 'ux-fidelity',
+          checkMode: config.checkMode,
+          dryRun: config.dryRun,
+        })
+        
+        if (!uxFidelityWriteResult.success) {
+          if (config.checkMode && uxFidelityWriteResult.error?.includes('Drift detected')) {
+            warnings.push(`UX Fidelity would be regenerated: ${uxFidelityWriteResult.error}`)
+          } else {
+            errors.push(`UX Fidelity generation failed: ${uxFidelityWriteResult.error}`)
+          }
+        } else if (uxFidelityWriteResult.written) {
+          artifacts.push(uxFidelityOutputPath)
+        }
+      } catch (error: any) {
+        errors.push(`UX Fidelity generation failed: ${error.message}`)
+      }
+    }
+    
+    // Sub-phase 7.10: Generate IntentGraph Descriptors
+    if (intentGraphDescriptors && intentGraphDescriptors.size > 0) {
+      try {
+        const intentGraphOutputDir = join(config.workspaceRoot, 'entelechia-ui', 'src', 'generated', 'intent-graph')
+        if (!existsSync(intentGraphOutputDir)) {
+          mkdirSync(intentGraphOutputDir, { recursive: true })
+        }
+        
+        const intentGraphOutputPath = join(intentGraphOutputDir, 'intent-graph.generated.ts')
+        const intentGraphCode = generateIntentGraphCode(intentGraphDescriptors)
+        const intentGraphWriteResult = writer.writeFile(intentGraphOutputPath, intentGraphCode, {
+          banner: {
+            source: 'intent-graph/*.yaml',
+          },
+          type: 'intent-graph',
+          checkMode: config.checkMode,
+          dryRun: config.dryRun,
+        })
+        
+        if (!intentGraphWriteResult.success) {
+          if (config.checkMode && intentGraphWriteResult.error?.includes('Drift detected')) {
+            warnings.push(`IntentGraph would be regenerated: ${intentGraphWriteResult.error}`)
+          } else {
+            errors.push(`IntentGraph generation failed: ${intentGraphWriteResult.error}`)
+          }
+        } else if (intentGraphWriteResult.written) {
+          artifacts.push(intentGraphOutputPath)
+        }
+        
+        // ✅ ONTOLOGICAL: Generate mutation metadata STATE
+        // This is ACT-layer generation - creates STATE that UI consumes
+        const { generateMutationMetadataCode } = await import('../../generators/mutation-metadata-generator.js')
+        const mutationMetadataCode = generateMutationMetadataCode(intentGraphDescriptors)
+        const mutationMetadataOutputPath = join(intentGraphOutputDir, 'mutation-metadata.generated.ts')
+        const mutationMetadataWriteResult = writer.writeFile(mutationMetadataOutputPath, mutationMetadataCode, {
+          banner: {
+            source: 'intent-graph/*.yaml',
+          },
+          type: 'mutation-metadata',
+          checkMode: config.checkMode,
+          dryRun: config.dryRun,
+        })
+        
+        if (!mutationMetadataWriteResult.success) {
+          if (config.checkMode && mutationMetadataWriteResult.error?.includes('Drift detected')) {
+            warnings.push(`Mutation metadata would be regenerated: ${mutationMetadataWriteResult.error}`)
+          } else {
+            errors.push(`Mutation metadata generation failed: ${mutationMetadataWriteResult.error}`)
+          }
+        } else if (mutationMetadataWriteResult.written) {
+          artifacts.push(mutationMetadataOutputPath)
+        }
+      } catch (error: any) {
+        errors.push(`IntentGraph generation failed: ${error.message}`)
+      }
+    }
+    
+    // Generate Purity Guards code (Phase 9.2)
+    if (purityGuards && purityGuards.size > 0) {
+      try {
+        const purityGuardsOutputDir = join(config.workspaceRoot, 'entelechia-ui', 'src', 'generated', 'purity-guards')
+        if (!existsSync(purityGuardsOutputDir)) {
+          mkdirSync(purityGuardsOutputDir, { recursive: true })
+        }
+        
+        const purityGuardsCode = generatePurityGuardsCode(purityGuards)
+        const purityGuardsOutputPath = join(purityGuardsOutputDir, 'purity-guards.generated.ts')
+        const purityGuardsWriteResult = writer.writeFile(purityGuardsOutputPath, purityGuardsCode, {
+          banner: {
+            source: 'purity-guards/*.yaml',
+          },
+          type: 'purity-guards',
+          checkMode: config.checkMode,
+          dryRun: config.dryRun,
+        })
+        
+        if (!purityGuardsWriteResult.success) {
+          if (config.checkMode && purityGuardsWriteResult.error?.includes('Drift detected')) {
+            warnings.push(`Purity guards would be regenerated: ${purityGuardsWriteResult.error}`)
+          } else {
+            errors.push(`Purity guards generation failed: ${purityGuardsWriteResult.error}`)
+          }
+        } else if (purityGuardsWriteResult.written) {
+          artifacts.push(purityGuardsOutputPath)
+        }
+      } catch (error: any) {
+        errors.push(`Purity guards generation failed: ${error.message}`)
       }
     }
     

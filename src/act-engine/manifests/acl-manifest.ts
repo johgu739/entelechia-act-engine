@@ -16,8 +16,8 @@ import { join } from 'path'
  * @param workspaceRoot Workspace root path (for resolving backend paths)
  */
 export async function generateAclManifest(workspaceRoot: string): Promise<AclActManifest> {
-  const actionRegistryPath = join(workspaceRoot, 'entelechia-backend', 'src', 'acl', 'action-registry.ts')
-  const roleCompilerPath = join(workspaceRoot, 'entelechia-backend', 'src', 'acl', 'role-compiler.ts')
+  const actionRegistryPath = join(workspaceRoot, 'entelechia-core', 'src', 'acl', 'action-registry.ts')
+  const roleCompilerPath = join(workspaceRoot, 'entelechia-core', 'src', 'acl', 'role-compiler.ts')
   
   // Dynamic import from backend (ACL is backend-specific)
   const actionRegistryModule = await import(`file://${actionRegistryPath}`)

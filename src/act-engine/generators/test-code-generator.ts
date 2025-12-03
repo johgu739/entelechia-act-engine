@@ -14,7 +14,7 @@ import type {
   TestCaseDefinition,
   SchemaDefinition,
   FieldDefinition,
-} from '@entelechia/shared/contracts/metadata/types'
+} from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Generate complete test file code from contract metadata
@@ -45,7 +45,7 @@ export function generateTestCode(
   // Generate schema imports
   const schemaImports = getSchemaImports(metadata)
   if (schemaImports.length > 0) {
-    lines.push(`import { ${schemaImports.join(', ')} } from '@entelechia/shared/contracts/${metadata.domain}.contract'`)
+    lines.push(`import { ${schemaImports.join(', ')} } from '@entelechia/contracts/contracts/${metadata.domain}.contract'`)
   }
   
   // Import row schema if exists

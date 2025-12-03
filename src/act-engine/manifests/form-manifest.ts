@@ -9,7 +9,7 @@ import { join, basename } from 'path'
 import { readFileSync } from 'fs'
 import { parse } from 'yaml'
 import { FormYamlSchema } from '../../forms/yaml-schema.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import type { FormActManifest } from './types.js'
 
 /**

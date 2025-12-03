@@ -28,8 +28,8 @@ import {
   BackendInternalContractMetadata,
   BackendMiscContractMetadata,
   DashboardContractMetadata,
-} from '../../../../entelechia-backend/src/contracts/metadata/index.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+} from '../../../../entelechia-core/src/contracts/metadata/index.js'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Parse YAML file

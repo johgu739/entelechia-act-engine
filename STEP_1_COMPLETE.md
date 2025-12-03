@@ -15,11 +15,11 @@
 
 3. **ContractDefinition typer flyttade**
    - `entelechia-backend/src/contracts/metadata/types.ts` → `entelechia-shared/src/contracts/metadata/types.ts`
-   - Exporterade från `@entelechia/shared/contracts/metadata/types`
+   - Exporterade från `@entelechia/contracts/contracts/metadata/types`
    - Uppdaterade i `entelechia-shared/package.json` exports
 
 4. **Imports uppdaterade**
-   - Alla imports av `ContractDefinition` uppdaterade till `@entelechia/shared/contracts/metadata/types`
+   - Alla imports av `ContractDefinition` uppdaterade till `@entelechia/contracts/contracts/metadata/types`
    - ACL-imports gjorda dynamiska (laddas från backend vid runtime)
    - Metadata validator gjord dynamisk
    - Functional canonicalizer uppdaterad att ta `workspaceRoot` som parameter

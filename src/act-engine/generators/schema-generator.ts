@@ -21,7 +21,7 @@ import type {
   RefinementDefinition,
   ResponseSchemaDefinition,
   FieldType,
-} from '@entelechia/shared/contracts/metadata/types'
+} from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Datetime validation function

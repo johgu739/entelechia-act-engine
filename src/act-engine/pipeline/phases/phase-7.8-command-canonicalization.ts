@@ -21,7 +21,7 @@ import { CommandsYAMLSchema } from '../../../commands/command-schema.js'
 import {
   canonicalizeCommands,
   validateCommandsAgainstActionRegistry,
-  validateCommandsAgainstIntentRegistry,
+  validateCommandIntentBindingCoherence,
   type CommandCanonicalizationResult,
 } from '../../../commands/command-canonicalizer.js'
 import type {
@@ -102,23 +102,21 @@ export async function runPhase7_8CommandCanonicalization(
       errors.push(`Command "${error.commandId}": ${error.field} - ${error.message}`)
     }
 
-    // 5. Validate against IntentRegistry (for intent-based mutations)
-    // Note: IntentRegistry uses path aliases that don't work in Node.js context
-    // So we skip this validation for now - it will be validated at runtime in UI
+    // 5. Validate command-intent binding coherence against IntentGraph
+    // This implements invariant COMMAND_INTENT_BINDING_COHERENCE.F91
     try {
-      const intentRegistry = await loadIntentRegistry(config.workspaceRoot)
-      const intentRegistryErrors = validateCommandsAgainstIntentRegistry(
+      const intentGraphIntentIds = await loadIntentGraphIntentIds(config.workspaceRoot)
+      const coherenceErrors = validateCommandIntentBindingCoherence(
         canonicalizationResult.commands,
-        intentRegistry
+        intentGraphIntentIds
       )
 
-      for (const error of intentRegistryErrors) {
-        warnings.push(`Command "${error.commandId}": ${error.field} - ${error.message} (will be validated at runtime)`)
+      for (const error of coherenceErrors) {
+        errors.push(`Command "${error.commandId}": ${error.field} - ${error.message}`)
       }
     } catch (error: any) {
-      // IntentRegistry can't be loaded in Node.js context (path aliases)
-      // This is OK - validation will happen at runtime in UI
-      warnings.push(`IntentRegistry validation skipped: ${error.message} (will be validated at runtime)`)
+      // If IntentGraph can't be loaded, fail the pipeline
+      errors.push(`Failed to load IntentGraph for command-intent validation: ${error.message}`)
     }
 
     // 6. Build descriptor maps
@@ -171,7 +169,7 @@ async function loadActionRegistry(workspaceRoot: string): Promise<Set<string>> {
     // Dynamic import from backend (ACL is backend-specific)
     const actionRegistryPath = join(
       workspaceRoot,
-      'entelechia-backend',
+      'entelechia-core',
       'src',
       'acl',
       'action-registry.ts'
@@ -200,40 +198,44 @@ async function loadActionRegistry(workspaceRoot: string): Promise<Set<string>> {
 }
 
 /**
- * Load IntentRegistry from UI
+ * Load IntentGraph YAML and extract all IntentIDs
+ * 
+ * This is used to validate that domain commands have valid intentIds
+ * and that non-domain commands don't have intentIds.
  */
-async function loadIntentRegistry(workspaceRoot: string): Promise<Set<string>> {
+async function loadIntentGraphIntentIds(workspaceRoot: string): Promise<Set<string>> {
   try {
-    const intentRegistryPath = join(
+    const intentGraphPath = join(
       workspaceRoot,
-      'entelechia-ui',
-      'src',
-      'intent',
-      'intent-registry.ts'
+      'entelechia-form',
+      'intent-graph',
+      'intent-graph.yaml'
     )
     
-    // Use dynamic import with file:// protocol
-    const intentRegistryModule = await import(`file://${intentRegistryPath}`)
+    if (!existsSync(intentGraphPath)) {
+      // If IntentGraph doesn't exist, return empty set (will cause validation errors)
+      console.warn('[Phase 7.8] IntentGraph YAML not found:', intentGraphPath)
+      return new Set<string>()
+    }
     
-    // Extract all IntentIDs from registry
-    // IntentRegistry exports intentRegistry object with IntentID keys
+    const yamlContent = readFileSync(intentGraphPath, 'utf-8')
+    const yamlData = parse(yamlContent)
+    
+    // Extract all IntentIDs from intentGraph.intents array
     const intentIds = new Set<string>()
     
-    const intentRegistry = intentRegistryModule.intentRegistry || intentRegistryModule.default?.intentRegistry
-    
-    if (intentRegistry && typeof intentRegistry === 'object') {
-      // IntentRegistry keys are IntentIDs
-      for (const key of Object.keys(intentRegistry)) {
-        if (typeof key === 'string') {
-          intentIds.add(key)
+    if (yamlData.intentGraph && yamlData.intentGraph.intents && Array.isArray(yamlData.intentGraph.intents)) {
+      for (const intent of yamlData.intentGraph.intents) {
+        if (intent.id && typeof intent.id === 'string') {
+          intentIds.add(intent.id)
         }
       }
     }
     
     return intentIds
   } catch (error) {
-    // If IntentRegistry can't be loaded, return empty set (will cause validation errors)
-    console.warn('[Phase 7.8] Could not load IntentRegistry:', error)
+    // If IntentGraph can't be loaded, return empty set (will cause validation errors)
+    console.warn('[Phase 7.8] Could not load IntentGraph:', error)
     return new Set<string>()
   }
 }

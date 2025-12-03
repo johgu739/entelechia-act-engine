@@ -4,7 +4,7 @@
  * Generates ContractActManifest from contract metadata.
  */
 
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import type { ContractActManifest } from './types.js'
 import { join } from 'path'
 

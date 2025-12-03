@@ -8,7 +8,7 @@
 
 import { readFileSync, existsSync, readdirSync } from 'fs'
 import { join } from 'path'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import { FormYamlSchema } from '../../forms/yaml-schema.js'
 import { validateFormYaml } from '../../forms/validator.js'
 import { canonicalizeForm, type CanonicalFormDescriptor } from '../../forms/canonicalizer.js'

@@ -13,7 +13,7 @@ import type { ActManifest } from '../../manifests/types.js'
 import type { ActEngineConfig, PhaseResult } from '../types.js'
 import { FormYamlSchema } from '../../../forms/yaml-schema.js'
 import { canonicalizeFunctionalForm } from '../../../forms/functional-canonicalizer.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import type { CanonicalFunctionalFormDescriptor } from '../../../forms/functional-types.js'
 
 /**

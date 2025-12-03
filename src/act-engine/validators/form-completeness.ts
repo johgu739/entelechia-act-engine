@@ -10,7 +10,7 @@ import { readdirSync, existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { parse } from 'yaml'
 import { FormYamlSchema } from '../../forms/yaml-schema.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 import { registry } from '@entelechia/invariant-engine'
 
 export interface CompletenessCheckResult {

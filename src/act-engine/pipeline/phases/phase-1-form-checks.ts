@@ -7,7 +7,7 @@
 import type { ActManifest } from '../../manifests/types.js'
 import type { ActEngineConfig, PhaseResult } from '../types.js'
 import { validateFormCompleteness } from '../../validators/form-completeness.js'
-import type { ContractDefinition } from '@entelechia/shared/contracts/metadata/types'
+import type { ContractDefinition } from '@entelechia/contracts/contracts/metadata/types'
 
 /**
  * Execute Phase 1: FORM Completeness Checks

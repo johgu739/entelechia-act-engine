@@ -20,3 +20,6 @@ export type { FormYaml } from './forms/yaml-schema.js'
 export * from './navigation/metadata/loader.js'
 export * from './navigation/metadata/types.js'
 
+// Surfaces
+export * from './surfaces/index.js'
+
